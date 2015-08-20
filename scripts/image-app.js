@@ -6,6 +6,8 @@
   var canvas = document.querySelector('#image');
   var ctx = canvas.getContext('2d');
 
+  imageWorker = new Worker('scripts/worker.js');
+
   function handleImage(e){
     var reader = new FileReader();
     reader.onload = function(event){
@@ -42,16 +44,24 @@
 
     // Hint! This is where you should post messages to the web worker and
     // receive messages from the web worker.
-    w = new Worker('worker.js');
-      w.postMessage({imageData, type});
+
+    imageWorker.postMessage({'imageData': imageData, 'type': type});
       console.log('Message posted to worker');
-    w.onmessage = function(e) {
-      imageData = e.data.imageData;
-      console.log('Message received from worker');
+
+    imageWorker.onmessage = function(e) {
+      toggleButtonsAbledness();
+      var image = e.data;
+      if (image) return ctx.putImageData(e.data, 0, 0);
+      console.log("No manipulated image returned.");
     }
 
-    toggleButtonsAbledness();
-    return ctx.putImageData(imageData, 0, 0);
+    imageWorker.onerror = function(error) {
+      function WorkerException(message) {
+        this.name = "WorkerException";
+        this.message = message;
+      };
+      throw new WorkerException('Worker error.');
+    };
   };
 
   function revertImage() {
